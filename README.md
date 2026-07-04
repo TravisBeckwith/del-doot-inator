@@ -4,6 +4,7 @@
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
+[![DOI](https://zenodo.org/badge/1289484775.svg)](https://doi.org/10.5281/zenodo.21197519)
 
 A companion to [updoot-inator](https://github.com/TravisBeckwith/updoot-inator). Removes cached downloads and leftover files left behind by package managers after updates or installations. Does **not** remove installed packages.
 
