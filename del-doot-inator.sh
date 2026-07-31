@@ -272,6 +272,7 @@ clean_apt() {
     if $DRY_RUN; then
         dry_info "Would remove all .deb files from $cache_dir"
         dry_info "  → sudo apt clean"
+        CLEANED+=("apt (${before}, dry-run)")
     else
         if run_cmd "Clean APT package cache" sudo apt clean; then
             local after
@@ -307,6 +308,7 @@ clean_brew() {
             dry_info "Would remove cached downloads older than 120 days"
             dry_info "  → brew cleanup"
         fi
+        CLEANED+=("brew (${before}, dry-run)")
     else
         local cmd_args=("brew" "cleanup")
         $AGGRESSIVE && cmd_args+=("--prune=all")
@@ -347,6 +349,7 @@ clean_pip() {
     if $DRY_RUN; then
         dry_info "Would purge all cached wheels and HTTP data from $cache_dir"
         dry_info "  → $pip_cmd cache purge"
+        CLEANED+=("pip (${before}, dry-run)")
     else
         if run_cmd "Purge pip cache" "$pip_cmd" cache purge; then
             local after
@@ -375,6 +378,7 @@ clean_conda() {
             dry_info "Would remove downloaded package tarballs only"
             dry_info "  → conda clean --tarballs --yes"
         fi
+        CLEANED+=("conda (dry-run)")
     else
         local cmd_args=("conda" "clean" "--yes")
         if $AGGRESSIVE; then
@@ -409,6 +413,7 @@ clean_npm() {
     if $DRY_RUN; then
         dry_info "Would clean npm cache at $cache_dir"
         dry_info "  → npm cache clean --force"
+        CLEANED+=("npm (${before}, dry-run)")
     else
         if run_cmd "Clean npm cache" npm cache clean --force; then
             local after
@@ -448,6 +453,7 @@ clean_cargo() {
         fi
         # Show what cargo cache itself reports
         cargo cache 2>/dev/null || true
+        CLEANED+=("cargo (${before}, dry-run)")
     else
         local success_flag=false
         if $AGGRESSIVE; then
@@ -493,6 +499,10 @@ clean_snap() {
 
     local found_any=false
 
+    local snap_err_file
+    snap_err_file=$(mktemp)
+    trap 'rm -f "$snap_err_file"' RETURN
+
     while IFS= read -r line; do
         local name rev status
         name=$(echo "$line" | awk '{print $1}')
@@ -507,11 +517,11 @@ clean_snap() {
                 info "Removing $name revision $rev..."
                 # snap remove can fail if the snap is currently in use /
                 # cannot be stopped — warn and skip rather than hard-fail.
-                if sudo snap remove "$name" --revision="$rev" 2>/tmp/snap_err; then
+                if sudo snap remove "$name" --revision="$rev" 2>"$snap_err_file"; then
                     success "Removed $name rev $rev"
                 else
                     local snap_err
-                    snap_err=$(cat /tmp/snap_err)
+                    snap_err=$(cat "$snap_err_file")
                     warn "Could not remove $name rev $rev — ${snap_err:-snap may be in use or require a stopped state}. Skipping."
                 fi
             fi
@@ -614,6 +624,7 @@ clean_firmware() {
     if $DRY_RUN; then
         dry_info "Would clear firmware update history and cached downloads"
         dry_info "  → fwupdmgr clear-history"
+        CLEANED+=("firmware (dry-run)")
     else
         if run_cmd "Clear firmware history" fwupdmgr clear-history; then
             CLEANED+=("firmware")

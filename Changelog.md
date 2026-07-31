@@ -1,5 +1,21 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- **Dry-run summary was incomplete for most managers.** Only `snap` and
+  `flatpak` added an entry to the final "Cleaned:" summary during
+  `--dry-run`; the other 7 cleaners (apt, brew, pip, conda, npm, cargo,
+  firmware) reported their planned actions inline but never surfaced
+  them in the end-of-run summary, so `--dry-run`'s own stated purpose
+  ("estimated space freed") wasn't actually reflected there for most
+  package managers. All 9 cleaners now report consistently.
+- **Predictable temp file path in `clean_snap()`**: `snap remove`'s
+  stderr was captured to a fixed path (`/tmp/snap_err`) shared across
+  all users on the system — a minor hardening gap (symlink/race
+  susceptibility on a shared `/tmp`). Switched to `mktemp` with a
+  function-scoped cleanup trap.
+
 ## [1.0.0] - 2026-07-04
 
 ### Features
