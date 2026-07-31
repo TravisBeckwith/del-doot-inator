@@ -110,8 +110,6 @@ bash ./install.sh
 
 ## Release Notes
 
-### Unreleased
-
 **Fixed**
 - **Incomplete dry-run summary**: `--dry-run` only listed `snap` and `flatpak` in the final "Cleaned:" summary — the other 7 cleaners (apt, brew, pip, conda, npm, cargo, firmware) reported their planned actions inline during the run but never surfaced them in the end-of-run summary. This meant `--dry-run`'s own stated purpose ("estimated space freed") wasn't actually reflected in the summary for most package managers. All 9 cleaners now report consistently, with cache size where available (e.g. `apt (8.0K, dry-run)`, `pip (684M, dry-run)`).
 - **Predictable temp file path in `clean_snap()`**: `snap remove`'s stderr was captured to a fixed, shared path (`/tmp/snap_err`) — a minor hardening gap on multi-user systems (symlink/race susceptibility). Switched to `mktemp` with a function-scoped cleanup trap.
