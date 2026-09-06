@@ -4,7 +4,7 @@
 # del-doot-inator — System-Wide Cache & Download Cleanup
 # =============================================================================
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -248,6 +248,44 @@ dir_size() {
         du -sh "$path" 2>/dev/null | cut -f1
     else
         echo "0"
+    fi
+}
+
+# =============================================================================
+# SUDO CREDENTIAL KEEP-ALIVE
+#
+# apt, snap, and flatpak's system-cache removal each call sudo cold, with
+# nothing keeping the cached sudo timestamp alive in between. On a machine
+# with a lot of stale snap revisions or a slow flatpak cache removal, a
+# later sudo call can outlast sudo's default timestamp_timeout (5-15 min
+# depending on distro) and prompt for the password again even though you
+# already authenticated earlier in the same run.
+#
+# Fix: prompt once up front, then refresh the cached credential every 60s
+# in the background for the lifetime of the run. Skipped entirely in
+# --dry-run, since nothing is actually executed there.
+# =============================================================================
+SUDO_KEEPALIVE_PID=""
+
+sudo_keepalive_start() {
+    $DRY_RUN && return
+    command -v sudo &> /dev/null || return
+
+    # If this fails (no tty, no cached credential, passwordless sudo not
+    # configured), just continue — individual sudo calls will prompt or
+    # fail on their own, exactly as before this fix existed.
+    sudo -v 2>/dev/null || return
+
+    ( while true; do sudo -n -v 2>/dev/null; sleep 60; done ) &
+    SUDO_KEEPALIVE_PID=$!
+    trap 'sudo_keepalive_stop' EXIT
+}
+
+sudo_keepalive_stop() {
+    if [ -n "$SUDO_KEEPALIVE_PID" ]; then
+        kill "$SUDO_KEEPALIVE_PID" 2>/dev/null
+        wait "$SUDO_KEEPALIVE_PID" 2>/dev/null
+        SUDO_KEEPALIVE_PID=""
     fi
 }
 
@@ -723,6 +761,11 @@ main() {
         info "Logging to: $LOG_FILE"
     fi
 
+    # Prime + keep the sudo credential alive for the whole run so a slow
+    # step (many stale snap revisions, a large flatpak system cache) can't
+    # let the timestamp expire and force a second password prompt.
+    sudo_keepalive_start
+
     clean_apt
     clean_brew
     clean_pip
@@ -732,6 +775,8 @@ main() {
     clean_snap
     clean_flatpak
     clean_firmware
+
+    sudo_keepalive_stop
 
     print_summary
 }

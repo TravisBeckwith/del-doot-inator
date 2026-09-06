@@ -1,8 +1,23 @@
 # Changelog
 
-## [Unreleased]
+## [1.1.0] - 2026-09-06 (final release)
+
+This is the last release of del-doot-inator as a standalone tool. Its
+functionality has been merged with updoot-inator into
+[maintainctl](https://github.com/TravisBeckwith/maintainctl)
+(`maintainctl clean`). This repo remains available for anyone who wants
+the cleanup-only script on its own; no new features will land here.
 
 ### Fixed
+- **Repeated sudo prompts.** `apt clean`, `snap remove`, and the flatpak
+  system-cache removal each called `sudo` cold, with nothing keeping the
+  cached sudo timestamp alive between calls. A slow step in the same run
+  (many stale snap revisions, a large flatpak system cache) could outlast
+  sudo's default `timestamp_timeout`, causing a later sudo-gated step to
+  prompt for the password again. Added an up-front `sudo -v` plus a
+  background refresh every 60s for the run's lifetime (torn down on
+  exit). Skipped entirely in `--dry-run`, since nothing is actually
+  executed there.
 - **Dry-run summary was incomplete for most managers.** Only `snap` and
   `flatpak` added an entry to the final "Cleaned:" summary during
   `--dry-run`; the other 7 cleaners (apt, brew, pip, conda, npm, cargo,
